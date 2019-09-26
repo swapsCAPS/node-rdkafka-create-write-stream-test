@@ -28,7 +28,10 @@ const generate = async () => {
 }
 
 const run = async () => {
-  await unlink(fileName)
+  await unlink(fileName).catch((error) => console.warn(error))
+
+  console.log(`generating test msgs to ${fileName}`)
+
   await generate()
 
   const globalConfig = {
@@ -45,6 +48,35 @@ const run = async () => {
 
   const producerStream = Kafka.Producer.createWriteStream(globalConfig, {}, { topic });
 
+  const client = Kafka.AdminClient.create({
+    ...globalConfig,
+    'client.id': 'kafka-admin',
+  })
+
+  await async.series([
+    (cb) => {
+      console.log('deleting topic')
+      client.deleteTopic(topic, 5000, (error) => {
+        if (error) {
+          console.error('Could not delete topic', error)
+          if (error.code === 3) return cb()
+          return cb(error)
+        }
+        setTimeout(cb, 5000)
+      })
+    },
+    (cb) => {
+      console.log('creating topic')
+      client.createTopic({
+        topic,
+        num_partitions:     100,
+        replication_factor: 1,
+      }, cb)
+    },
+  ]).catch(error => {
+    throw new Error(`Something went wrong ${error.message}`)
+  })
+
   const streams = [
     fs.createReadStream(fileName),
     split2(),
@@ -53,32 +85,11 @@ const run = async () => {
 
   let count = 0
 
-  const client = Kafka.AdminClient.create({
-    ...globalConfig,
-    'client.id': 'kafka-admin',
-  })
-
-  await async.series([
-    (cb) => client.deleteTopic(topic, 5000, (error) => {
-      if (error) {
-        console.error('Could not delete topic', error)
-        if (error.code === 3) return cb()
-        return cb(error)
-      }
-      cb()
-    }),
-    (cb) => client.createTopic({
-      topic,
-      num_partitions:     100,
-      replication_factor: 1,
-    }, cb),
-  ]).catch(error => {
-    throw new Error(`Something went wrong ${error.message}`)
-  })
+  console.log('Producing messages to Kafka...')
 
   pipeline(...streams)
     .then(() => {
-      console.log('done 1')
+      console.log('Done producing')
     }).catch((error) => {
       console.error(error)
     })
@@ -97,10 +108,10 @@ const run = async () => {
       return pipeline(consumerStream, writable)
     })
     .then(() => {
-      console.log(`done 2 ${count}`)
+      console.log(`Done. Produced: ${count}`)
     }).catch((error) => {
       console.error(error)
-      console.error(`count ${count}`)
+      console.error(`Produced: ${count}`)
     })
 }
 
