@@ -62,7 +62,7 @@ const run = async () => {
           if (error.code === 3) return cb()
           return cb(error)
         }
-        setTimeout(cb, 5000)
+        setTimeout(cb, 10000)
       })
     },
     (cb) => {
