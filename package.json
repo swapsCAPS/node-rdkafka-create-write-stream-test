@@ -1,0 +1,17 @@
+{
+  "name": "rdkafka-writestream",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "async": "^3.1.0",
+    "chalk": "^2.4.2",
+    "node-rdkafka": "^2.7.1-2",
+    "split2": "^3.1.1"
+  }
+}
